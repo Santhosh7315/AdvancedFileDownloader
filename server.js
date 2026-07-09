@@ -28,7 +28,7 @@ app.use(express.static(path.join(ROOT, "public")));
 
 // Default page
 app.get("/", (req, res) => {
-    res.sendFile(path.join(ROOT, "public", "Login.html"));
+    res.sendFile(path.join(ROOT, "public", "login.html"));
 });
 
 
