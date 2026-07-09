@@ -295,43 +295,65 @@ function searchFiles() {
 
 async function uploadFile() {
 
-    const input = document.getElementById('fileInput');
+    const input = document.getElementById("fileInput");
 
-    if (!input.files.length) return alert('Select files to upload');
-
-    const folderPath = getFolderPath();
+    if (!input.files.length) {
+        alert("Please select file(s)");
+        return;
+    }
 
     const formData = new FormData();
 
-    Array.from(input.files).forEach(f => formData.append('files', f));
+    // Add all selected files
+    Array.from(input.files).forEach(file => {
+        formData.append("files", file);
+    });
 
-    formData.append('folder', folderPath);
+    // Send selected folder (optional)
+    formData.append("folder", getFolderPath());
 
-    const progressEl = document.getElementById('progress');
+    const progressBar = document.getElementById("progressFill");
+
+    progressBar.style.width = "20%";
 
     try {
 
-        const res = await fetch('/upload', { method: 'POST', body: formData });
+        const response = await fetch("/upload", {
+            method: "POST",
+            body: formData
+        });
 
-        const data = await res.json();
+        progressBar.style.width = "80%";
 
-        progressEl.innerText = data.message;
+        const result = await response.json();
 
-        input.value = '';
+        if (!response.ok) {
+            throw new Error(result.message || "Upload failed");
+        }
+
+        progressBar.style.width = "100%";
+
+        alert(result.message || "Upload Successful");
+
+        input.value = "";
 
         loadFiles();
+
+        setTimeout(() => {
+            progressBar.style.width = "0%";
+        }, 1500);
 
     } catch (err) {
 
         console.error(err);
 
-        progressEl.innerText = 'Upload failed!';
+        progressBar.style.width = "0%";
+
+        alert("Upload Failed\n\n" + err.message);
 
     }
 
 }
-
-
 /* ===============================
    INITIAL LOAD
 ================================*/
