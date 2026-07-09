@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Motherson iDCAS File Manager - Azure Theme</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif}
+body{display:flex;height:100vh;background:#F4F8FC;color:#1F2937}
+.sidebar{width:240px;background:#0078D4;color:#fff;padding:24px;display:flex;flex-direction:column}
+.sidebar h2{margin-bottom:35px;text-align:center}
+.sidebar a{color:#EAF4FF;text-decoration:none;padding:12px 14px;border-radius:8px;margin-bottom:8px}
+.sidebar a:hover,.sidebar a.active{background:#fff;color:#0078D4}
+.logout{margin-top:auto;background:#fff;color:#0078D4;padding:12px;border-radius:8px;text-align:center;cursor:pointer;font-weight:600}
+.main{flex:1;display:flex;flex-direction:column}
+.header{height:70px;background:#fff;border-bottom:1px solid #d9e4ef;display:flex;justify-content:space-between;align-items:center;padding:0 30px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.profile{background:#EAF4FF;color:#0078D4;padding:8px 16px;border-radius:20px;font-weight:600}
+.content{padding:30px;overflow:auto}
+.stats{display:flex;gap:20px;margin-bottom:25px}
+.stat-card{flex:1;background:#fff;border:1px solid #dce6f2;border-radius:12px;padding:24px;box-shadow:0 4px 12px rgba(0,0,0,.05)}
+.stat-card h3{color:#64748B;font-size:14px}
+.stat-card p{font-size:30px;color:#0078D4;font-weight:700;margin-top:8px}
+.search input{width:350px;padding:12px;border:1px solid #CBD5E1;border-radius:8px}
+.search input:focus{outline:none;border-color:#0078D4;box-shadow:0 0 0 3px rgba(0,120,212,.15)}
+.upload{margin:25px 0;background:#fff;border:2px dashed #7CC4FF;border-radius:12px;padding:30px;text-align:center}
+.upload button,.bulk{background:#0078D4;color:#fff;border:none;border-radius:8px;padding:11px 24px;cursor:pointer}
+.upload button:hover,.bulk:hover{background:#005FA3}
+.progress-bar{height:8px;background:#dce6f2;border-radius:10px;overflow:hidden;margin-top:15px}
+.progress-fill{width:30%;height:100%;background:linear-gradient(90deg,#0078D4,#38BDF8)}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.05)}
+th{background:#0078D4;color:#fff;padding:14px;text-align:left}
+td{padding:14px;border-bottom:1px solid #E5EDF5}
+tr:nth-child(even){background:#F8FBFF}
+tr:hover{background:#EAF4FF}
+.download{background:#0078D4;color:#fff;border:none;padding:6px 12px;border-radius:6px}
+.delete{background:#EF4444;color:#fff;border:none;padding:6px 12px;border-radius:6px}
+.bulk{margin-top:20px}
+</style>
+</head>
+<body>
+<div class="sidebar">
+<h2>☁ iDCAS</h2>
+<a href="#" class="active">Dashboard</a>
+<a href="settings.html">Settings</a>
+<div class="logout" onclick="logout()">Logout</div>
+</div>
+<div class="main">
+<div class="header">
+<h3>Azure File Manager</h3>
+<div class="profile">👤 Admin</div>
+</div>
+<div class="content">
+<div class="stats">
+<div class="stat-card"><h3>Total Files</h3><p id="totalFiles">0</p></div>
+<div class="stat-card"><h3>Total Downloads</h3><p id="downloads">0</p></div>
+<div class="stat-card"><h3>Storage Used</h3><p id="storage">0 MB</p></div>
+</div>
+<div class="search"><input id="search" placeholder="Search files..." onkeyup="searchFiles()"></div>
+<div class="upload" id="uploadArea">
+<h3>Upload File</h3><br>
+<input type="file" id="fileInput" multiple><br><br>
+<button onclick="uploadFile()">Upload</button>
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+</div>
+<h3 style="margin-bottom:12px">Available Files</h3>
+<table>
+<thead><tr><th>Select</th><th>Type</th><th>Name</th><th>Size</th><th>Date</th><th>Action</th></tr></thead>
+<tbody id="fileList"></tbody>
+</table>
+<button class="bulk" onclick="downloadFiles()">⬇ Download Selected</button>
+</div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
