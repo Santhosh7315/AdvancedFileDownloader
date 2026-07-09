@@ -33,30 +33,25 @@ app.get("/", (req, res) => {
 
 
 // ---------------- MULTER STORAGE ----------------
+const uploadDir = path.join(__dirname, "uploads");
+
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
 
     destination: (req, file, cb) => {
-
-        let folderPath = req.body.folder || uploadDir;
-        folderPath = path.resolve(folderPath);
-
-        try {
-            if (!fs.existsSync(folderPath)) {
-                fs.mkdirSync(folderPath, { recursive: true });
-            }
-            cb(null, folderPath);
-        } catch (err) {
-            cb(err, uploadDir);
-        }
+        cb(null, uploadDir);
     },
 
     filename: (req, file, cb) => {
         cb(null, file.originalname);
     }
+
 });
 
 const upload = multer({ storage });
-
 
 // ---------------- DATABASE ----------------
 const dbPath = path.join(ROOT, "users.db");
