@@ -1,1 +1,124 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Motherson iDCAS File Portal</title><style>*{box-sizing:border-box;font-family:Segoe UI,Arial,sans-serif}body{margin:0;height:100vh;display:flex;background:linear-gradient(135deg,#eaf4ff,#f7fbff)}.left-panel{flex:1;background:linear-gradient(135deg,#0078D4,#2B88D8);display:flex;flex-direction:column;justify-content:center;align-items:center;color:#fff;padding:40px;text-align:center}.logo img{width:140px}.brand-title{font-size:34px;font-weight:700;margin-top:20px}.brand-sub{max-width:340px;line-height:1.8}.right-panel{flex:1;display:flex;justify-content:center;align-items:center}.login-box{width:400px;background:#fff;padding:40px;border-radius:18px;box-shadow:0 15px 35px rgba(0,120,212,.18);text-align:center}.input-group{position:relative;margin-bottom:18px}.input-group input{width:100%;padding:14px;border:1px solid #cbd5e1;border-radius:10px}.show-pass{position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer}.login-btn{width:100%;padding:14px;border:none;border-radius:10px;background:#0078D4;color:#fff;font-weight:700}.footer{margin-top:20px;color:#64748b}</style></head><body><div class="left-panel"><div class="logo"><img src="logo.png"></div><div class="brand-title">iDCAS File Portal</div><div class="brand-sub">Enterprise File Distribution System<br>Securely upload, manage and download applications.</div></div><div class="right-panel"><div class="login-box"><h2 style="color:#0078D4">Admin Login</h2><div class="input-group"><input id="username" placeholder="Username"></div><div class="input-group"><input id="password" type="password" placeholder="Password"><span class="show-pass" onclick="togglePassword()">👁</span></div><label><input type="checkbox"> Remember me</label><br><br><button class="login-btn" onclick="login()">Sign In</button><div class="footer">Microsoft Azure Inspired UI</div></div></div><script src="script.js"></script><script>function togglePassword(){const p=document.getElementById("password");p.type=p.type==="password"?"text":"password";}</script></body></html>
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Motherson iDCAS File Portal</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Segoe UI, Arial, sans-serif
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            background: linear-gradient(135deg, #eaf4ff, #f7fbff)
+        }
+
+        .left-panel {
+            flex: 1;
+            background: linear-gradient(135deg, #0078D4, #2B88D8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            padding: 40px;
+            text-align: center
+        }
+
+        .logo img {
+            width: 140px
+        }
+
+        .brand-title {
+            font-size: 34px;
+            font-weight: 700;
+            margin-top: 20px
+        }
+
+        .brand-sub {
+            max-width: 340px;
+            line-height: 1.8
+        }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center
+        }
+
+        .login-box {
+            width: 400px;
+            background: #fff;
+            padding: 40px;
+            border-radius: 18px;
+            box-shadow: 0 15px 35px rgba(0, 120, 212, .18);
+            text-align: center
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 18px
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px
+        }
+
+        .show-pass {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: #0078D4;
+            color: #fff;
+            font-weight: 700
+        }
+
+        .footer {
+            margin-top: 20px;
+            color: #64748b
+        }
+    </style>
+</head>
+
+<body>
+    <div class="left-panel">
+        <div class="logo"><img src="logo.png"></div>
+        <div class="brand-title">iDCAS File Portal</div>
+        <div class="brand-sub">Enterprise File Distribution System<br>Securely upload, manage and download applications.</div>
+    </div>
+    <div class="right-panel">
+        <div class="login-box">
+            <h2 style="color:#0078D4">Admin Login</h2>
+            <div class="input-group"><input id="username" placeholder="Username"></div>
+            <div class="input-group"><input id="password" type="password" placeholder="Password"><span class="show-pass" onclick="togglePassword()">👁</span></div><label><input type="checkbox"> Remember me</label><br><br><button class="login-btn" onclick="login()">Sign In</button>
+            <div class="footer">Microsoft Azure Inspired UI</div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+    <script>
+        function togglePassword() {
+            const p = document.getElementById("password");
+            p.type = p.type === "password" ? "text" : "password";
+        }
+    </script>
+</body>
+
+</html>
