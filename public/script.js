@@ -85,9 +85,8 @@ function logout() {
 /* ===============================
    FILE PATH FUNCTION
 ================================*/
-
 function getFolderPath() {
-    return "";
+    return localStorage.getItem("serverPath") || "/tmp/uploads";
 }
 
 /* ===============================
