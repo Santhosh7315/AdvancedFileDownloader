@@ -87,9 +87,8 @@ function logout() {
 ================================*/
 
 function getFolderPath() {
-    return localStorage.getItem('serverPath') || 'D:\\requirement';
+    return "";
 }
-
 
 /* ===============================
    LOAD FILES
