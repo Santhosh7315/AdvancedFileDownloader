@@ -73,7 +73,15 @@ async function loadFiles() {
     const folderPath = getFolderPath();
 
     try {
-        const res = await fetch(`/files?folder=${encodeURIComponent(folderPath)}`);
+        // Added a timestamp parameter (cb) to force bypass any aggressive browser/CDN caching
+        const cacheBuster = `&cb=${new Date().getTime()}`;
+        const res = await fetch(`/files?folder=${encodeURIComponent(folderPath)}${cacheBuster}`, {
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+            }
+        });
+
         const files = await res.json();
         displayFiles(files);
     } catch (err) {
