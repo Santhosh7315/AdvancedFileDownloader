@@ -33,14 +33,7 @@ app.get("/", (req, res) => {
 
 
 // ---------------- MULTER STORAGE ----------------
-const uploadDir = path.join(__dirname, "uploads");
-
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
 const storage = multer.diskStorage({
-
     destination: (req, file, cb) => {
         cb(null, uploadDir);
     },
@@ -48,7 +41,6 @@ const storage = multer.diskStorage({
     filename: (req, file, cb) => {
         cb(null, file.originalname);
     }
-
 });
 
 const upload = multer({ storage });
