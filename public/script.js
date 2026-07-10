@@ -310,7 +310,7 @@ async function uploadFile() {
     // Send selected folder (optional)
     formData.append("folder", getFolderPath());
 
-    const progressEl = document.getElementById('progress');
+    const progressBar = document.getElementById('progress');
 
     try {
 
