@@ -168,7 +168,7 @@ function displayFiles(files) {
             <td><input type="checkbox" class="selectFile" data-name="${file.name}"></td>
             <td>${file.type || 'File'}</td>
             <td>${file.name}</td>
-            <td>${file.size}</td>
+            <td>${formatFileSize(file.size)}</td>
             <td>${file.date}</td>
             <td>
                 <button class="btn download" onclick="downloadFile('${file.name}')">Download</button>
@@ -310,9 +310,7 @@ async function uploadFile() {
     // Send selected folder (optional)
     formData.append("folder", getFolderPath());
 
-    const progressBar = document.getElementById("progressFill");
-
-    progressBar.style.width = "20%";
+    const progressEl = document.getElementById('progress');
 
     try {
 
