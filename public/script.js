@@ -1,11 +1,34 @@
-const fileListEl = document.getElementById('fileList');
+/* ===============================
+   DOM ELEMENTS & INITIALIZATION
+================================*/
+// Wrap initialization in a DOMContentLoaded listener to ensure HTML is fully parsed
+document.addEventListener("DOMContentLoaded", () => {
+    const fileListEl = document.getElementById('fileList');
+
+    // 1. Run Session Guard
+    checkLoginSession();
+
+    // 2. Initialize Dashboard Features (Only if on dashboard page)
+    if (fileListEl) {
+        loadFiles(fileListEl);
+        initDragAndDrop(fileListEl);
+
+        // Bind Search Bar if it exists
+        const searchInput = document.getElementById('search');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => searchFiles(fileListEl));
+        }
+    }
+});
 
 /* ===============================
    LOGIN SESSION CHECK
 ================================*/
-if (window.location.pathname.includes("dashboard.html")) {
-    if (!localStorage.getItem("loggedIn")) {
-        window.location.href = "login.html";
+function checkLoginSession() {
+    if (window.location.pathname.includes("dashboard.html")) {
+        if (!localStorage.getItem("loggedIn")) {
+            window.location.href = "login.html";
+        }
     }
 }
 
@@ -13,8 +36,13 @@ if (window.location.pathname.includes("dashboard.html")) {
    LOGIN FUNCTION (FOR login.html)
 ================================*/
 async function login() {
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
+    const usernameEl = document.getElementById("username");
+    const passwordEl = document.getElementById("password");
+
+    if (!usernameEl || !passwordEl) return;
+
+    const username = usernameEl.value;
+    const password = passwordEl.value;
 
     if (!username || !password) {
         alert("Enter username and password");
@@ -46,15 +74,14 @@ async function login() {
    LOGOUT FUNCTION
 ================================*/
 function logout() {
+    const clearSessionAndRedirect = () => {
+        localStorage.removeItem("loggedIn");
+        window.location.href = "login.html";
+    };
+
     fetch("/logout")
-        .then(() => {
-            localStorage.removeItem("loggedIn");
-            window.location.href = "login.html";
-        })
-        .catch(() => {
-            localStorage.removeItem("loggedIn");
-            window.location.href = "login.html";
-        });
+        .then(clearSessionAndRedirect)
+        .catch(clearSessionAndRedirect);
 }
 
 /* ===============================
@@ -67,7 +94,7 @@ function getFolderPath() {
 /* ===============================
    LOAD FILES
 ================================*/
-async function loadFiles() {
+async function loadFiles(fileListEl) {
     if (!fileListEl) return;
 
     const folderPath = getFolderPath();
@@ -82,7 +109,7 @@ async function loadFiles() {
         });
 
         const files = await res.json();
-        displayFiles(files);
+        displayFiles(files, fileListEl);
     } catch (err) {
         console.error('Error loading files:', err);
         fileListEl.innerHTML = '<tr><td colspan="6">Failed to load files.</td></tr>';
@@ -112,8 +139,19 @@ function formatFileSize(bytes) {
 /* ===============================
    DISPLAY FILES
 ================================*/
-function displayFiles(files) {
+function displayFiles(files, fileListEl) {
+    if (!fileListEl) return;
     fileListEl.innerHTML = '';
+
+    // Update Stats Cards Dynamically
+    const totalFilesEl = document.getElementById('totalFiles');
+    const storageEl = document.getElementById('storage');
+    
+    if (totalFilesEl) totalFilesEl.innerText = files ? files.length : 0;
+    if (storageEl) {
+        const totalBytes = files ? files.reduce((sum, file) => sum + (Number(file.size) || 0), 0) : 0;
+        storageEl.innerText = formatFileSize(totalBytes);
+    }
 
     if (!files || !files.length) {
         fileListEl.innerHTML = '<tr><td colspan="6">No files found in the database.</td></tr>';
@@ -144,6 +182,31 @@ function downloadFile(filename) {
     const folderPath = getFolderPath();
     const url = `/download/${encodeURIComponent(filename)}?folder=${encodeURIComponent(folderPath)}`;
     window.open(url, '_blank');
+}
+
+/* ===============================
+   DELETE SINGLE FILE
+================================*/
+async function deleteFile(filename) {
+    if (!confirm(`Are you sure you want to delete ${filename}?`)) return;
+
+    const folderPath = getFolderPath();
+    try {
+        const res = await fetch(`/delete?folder=${encodeURIComponent(folderPath)}&name=${encodeURIComponent(filename)}`, {
+            method: 'DELETE'
+        });
+
+        if (res.ok) {
+            alert("File deleted successfully");
+            const fileListEl = document.getElementById('fileList');
+            loadFiles(fileListEl);
+        } else {
+            alert("Failed to delete file");
+        }
+    } catch (err) {
+        console.error("Error deleting file:", err);
+        alert("Error deleting file");
+    }
 }
 
 /* ===============================
@@ -182,8 +245,11 @@ async function downloadFiles() {
 /* ===============================
    SEARCH FILES
 ================================*/
-function searchFiles() {
-    const filter = document.getElementById('search').value.toLowerCase();
+function searchFiles(fileListEl) {
+    const searchInput = document.getElementById('search');
+    if (!searchInput || !fileListEl) return;
+
+    const filter = searchInput.value.toLowerCase();
     const rows = fileListEl.querySelectorAll('tr');
 
     rows.forEach(row => {
@@ -198,7 +264,7 @@ function searchFiles() {
    CORE UPLOAD SCRIPT (Shared Process)
 ================================*/
 async function sendFilesToServer(files) {
-    if (!files.length) return;
+    if (!files || !files.length) return;
 
     const formData = new FormData();
     Array.from(files).forEach(file => {
@@ -225,7 +291,8 @@ async function sendFilesToServer(files) {
         if (progressBar) progressBar.style.width = "100%";
         alert(result.message || "Upload Successful");
         
-        loadFiles(); // Refresh database list on UI
+        const fileListEl = document.getElementById('fileList');
+        loadFiles(fileListEl); // Refresh database list on UI
 
         setTimeout(() => {
             if (progressBar) progressBar.style.width = "0%";
@@ -256,18 +323,14 @@ async function uploadFile() {
 /* ===============================
    DRAG AND DROP INITIALIZATION
 ================================*/
-function initDragAndDrop() {
-    // Listens to drops anywhere on the page framework body
+function initDragAndDrop(fileListEl) {
     const dropZone = document.body; 
+    if (!dropZone || !fileListEl) return;
 
-    if (!dropZone) return;
-
-    // Prevent default desktop browser drop overrides
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, (e) => e.preventDefault(), false);
     });
 
-    // Toggle styling drop classes if you have visual CSS cues (.highlight)
     ['dragenter', 'dragover'].forEach(eventName => {
         dropZone.addEventListener(eventName, () => dropZone.classList.add('highlight'), false);
     });
@@ -275,18 +338,9 @@ function initDragAndDrop() {
         dropZone.addEventListener(eventName, () => dropZone.classList.remove('highlight'), false);
     });
 
-    // Catch dropped files container
     dropZone.addEventListener('drop', (e) => {
         const dt = e.dataTransfer;
         const files = dt.files;
         sendFilesToServer(files);
     });
-}
-
-/* ===============================
-   INITIAL LOAD Execution
-================================*/
-if (fileListEl) {
-    loadFiles();
-    initDragAndDrop();
 }

@@ -23,17 +23,20 @@ body{display:flex;height:100vh;background:#F4F8FC;color:#1F2937}
 .search input{width:350px;padding:12px;border:1px solid #CBD5E1;border-radius:8px}
 .search input:focus{outline:none;border-color:#0078D4;box-shadow:0 0 0 3px rgba(0,120,212,.15)}
 .upload{margin:25px 0;background:#fff;border:2px dashed #7CC4FF;border-radius:12px;padding:30px;text-align:center}
+.upload.highlight{background:#EAF4FF;border-color:#0078D4} /* Style for Drag and Drop */
 .upload button,.bulk{background:#0078D4;color:#fff;border:none;border-radius:8px;padding:11px 24px;cursor:pointer}
 .upload button:hover,.bulk:hover{background:#005FA3}
 .progress-bar{height:8px;background:#dce6f2;border-radius:10px;overflow:hidden;margin-top:15px}
-.progress-fill{width:30%;height:100%;background:linear-gradient(90deg,#0078D4,#38BDF8)}
+.progress-fill{width:0%;height:100%;background:linear-gradient(90deg,#0078D4,#38BDF8);transition:width 0.3s ease}
 table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.05)}
 th{background:#0078D4;color:#fff;padding:14px;text-align:left}
 td{padding:14px;border-bottom:1px solid #E5EDF5}
 tr:nth-child(even){background:#F8FBFF}
 tr:hover{background:#EAF4FF}
-.download{background:#0078D4;color:#fff;border:none;padding:6px 12px;border-radius:6px}
-.delete{background:#EF4444;color:#fff;border:none;padding:6px 12px;border-radius:6px}
+.download{background:#0078D4;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer}
+.download:hover{background:#005FA3}
+.delete{background:#EF4444;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer}
+.delete:hover{background:#DC2626}
 .bulk{margin-top:20px}
 </style>
 </head>
@@ -52,10 +55,10 @@ tr:hover{background:#EAF4FF}
 <div class="content">
 <div class="stats">
 <div class="stat-card"><h3>Total Files</h3><p id="totalFiles">0</p></div>
-<div class="stat-card"><h3>Total Downloads</h3><p id="downloads">0</p></div>
-<div class="stat-card"><h3>Storage Used</h3><p id="storage">0 MB</p></div>
+<div class="stat-card"><h3>Total Downloads</h3><p id="downloads">-</p></div>
+<div class="stat-card"><h3>Storage Used</h3><p id="storage">0 Bytes</p></div>
 </div>
-<div class="search"><input id="search" placeholder="Search files..." onkeyup="searchFiles()"></div>
+<div class="search"><input id="search" placeholder="Search files..."></div>
 <div class="upload" id="uploadArea">
 <h3>Upload File</h3><br>
 <input type="file" id="fileInput" multiple><br><br>

@@ -21,14 +21,6 @@ const dbConfig = {
     }
 };
 
-sql.connect(dbConfig)
-    .then(() => {
-        console.log("Connected to SQL Server successfully!");
-    })
-    .catch(err => {
-        console.error("SQL Server Connection Error:", err);
-    });
-
 // Connect to SQL Server and initialize tables if they don't exist
 async function initDatabase() {
     try {
@@ -234,12 +226,18 @@ app.post("/download", async (req, res) => {
     }
 });
 
-// ---------------- DELETE FILE (From DB) ----------------
-app.delete("/delete/:filename", async (req, res) => {
+// ---------------- DELETE FILE (Corrected Mismatch for URL Query Parameters) ----------------
+app.delete("/delete", async (req, res) => {
+    const filename = req.query.name; // Reads '?name=' parameter sent from frontend script.js
+
+    if (!filename) {
+        return res.status(400).json({ success: false, message: "Missing file name parameter" });
+    }
+
     try {
         let pool = await sql.connect(dbConfig);
         let result = await pool.request()
-            .input("filename", sql.NVarChar(255), req.params.filename)
+            .input("filename", sql.NVarChar(255), filename)
             .query("DELETE FROM user_files WHERE file_name = @filename");
 
         if (result.rowsAffected[0] === 0) {
