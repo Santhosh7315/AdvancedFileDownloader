@@ -73,7 +73,6 @@ async function loadFiles() {
     const folderPath = getFolderPath();
 
     try {
-        // Added a timestamp parameter (cb) to force bypass any aggressive browser/CDN caching
         const cacheBuster = `&cb=${new Date().getTime()}`;
         const res = await fetch(`/files?folder=${encodeURIComponent(folderPath)}${cacheBuster}`, {
             headers: {
@@ -117,7 +116,7 @@ function displayFiles(files) {
     fileListEl.innerHTML = '';
 
     if (!files || !files.length) {
-        fileListEl.innerHTML = '<tr><td colspan="6">No files found in this folder.</td></tr>';
+        fileListEl.innerHTML = '<tr><td colspan="6">No files found in the database.</td></tr>';
         return;
     }
 
@@ -188,7 +187,6 @@ function searchFiles() {
     const rows = fileListEl.querySelectorAll('tr');
 
     rows.forEach(row => {
-        // Guard check in case the row does not contain enough children
         if (row.children[2]) {
             const name = row.children[2].innerText.toLowerCase();
             row.style.display = name.includes(filter) ? '' : 'none';
@@ -197,24 +195,17 @@ function searchFiles() {
 }
 
 /* ===============================
-   UPLOAD FILES (FIXED ID BUG HERE)
+   CORE UPLOAD SCRIPT (Shared Process)
 ================================*/
-async function uploadFile() {
-    const input = document.getElementById("fileInput");
-
-    if (!input || !input.files.length) {
-        alert("Please select file(s)");
-        return;
-    }
+async function sendFilesToServer(files) {
+    if (!files.length) return;
 
     const formData = new FormData();
-    Array.from(input.files).forEach(file => {
+    Array.from(files).forEach(file => {
         formData.append("files", file);
     });
-
     formData.append("folder", getFolderPath());
 
-    // FIXED: Target 'progressFill' instead of the non-existent 'progress'
     const progressBar = document.getElementById('progressFill');
 
     try {
@@ -232,12 +223,9 @@ async function uploadFile() {
         }
 
         if (progressBar) progressBar.style.width = "100%";
-
         alert(result.message || "Upload Successful");
-        input.value = "";
         
-        // Refresh the file list view
-        loadFiles();
+        loadFiles(); // Refresh database list on UI
 
         setTimeout(() => {
             if (progressBar) progressBar.style.width = "0%";
@@ -251,8 +239,54 @@ async function uploadFile() {
 }
 
 /* ===============================
-   INITIAL LOAD
+   MANUAL FILE SELECT UPLOAD
+================================*/
+async function uploadFile() {
+    const input = document.getElementById("fileInput");
+
+    if (!input || !input.files.length) {
+        alert("Please select file(s)");
+        return;
+    }
+
+    await sendFilesToServer(input.files);
+    input.value = ""; // Clear file input
+}
+
+/* ===============================
+   DRAG AND DROP INITIALIZATION
+================================*/
+function initDragAndDrop() {
+    // Listens to drops anywhere on the page framework body
+    const dropZone = document.body; 
+
+    if (!dropZone) return;
+
+    // Prevent default desktop browser drop overrides
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => e.preventDefault(), false);
+    });
+
+    // Toggle styling drop classes if you have visual CSS cues (.highlight)
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('highlight'), false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('highlight'), false);
+    });
+
+    // Catch dropped files container
+    dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        sendFilesToServer(files);
+    });
+}
+
+/* ===============================
+   INITIAL LOAD Execution
 ================================*/
 if (fileListEl) {
     loadFiles();
+    initDragAndDrop();
 }

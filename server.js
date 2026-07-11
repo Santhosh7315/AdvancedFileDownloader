@@ -1,9 +1,8 @@
 const express = require("express");
 const multer = require("multer");
-const fs = require("fs");
 const path = require("path");
 const archiver = require("archiver");
-const sqlite3 = require("sqlite3").verbose();
+const sql = require("mssql/msnodesqlv8");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,19 +10,77 @@ const PORT = process.env.PORT || 3000;
 // Root directory
 const ROOT = __dirname;
 
-// Upload directory
-const uploadDir = path.join(ROOT, "uploads");
+// ---------------- DATABASE CONFIGURATION ----------------
+const dbConfig = {
+    server: "localhost\\SQLEXPRESS",
+    database: "FileStorageDB",
+    driver: "msnodesqlv8",
+    options: {
+        trustedConnection: true,
+        trustServerCertificate: true
+    }
+};
 
-// Ensure upload folder exists
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+sql.connect(dbConfig)
+    .then(() => {
+        console.log("Connected to SQL Server successfully!");
+    })
+    .catch(err => {
+        console.error("SQL Server Connection Error:", err);
+    });
+
+// Connect to SQL Server and initialize tables if they don't exist
+async function initDatabase() {
+    try {
+        let pool = await sql.connect(dbConfig);
+        console.log("Connected to SQL Server successfully via Windows Authentication.");
+
+        // Create Users Table if not exists
+        await pool.request().query(`
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='users' AND xtype='U')
+            CREATE TABLE users (
+                id INT IDENTITY(1,1) PRIMARY KEY,
+                username NVARCHAR(100) UNIQUE,
+                password NVARCHAR(100)
+            );
+        `);
+
+        // Create Files Storage Table if not exists
+        await pool.request().query(`
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='user_files' AND xtype='U')
+            CREATE TABLE user_files (
+                id INT IDENTITY(1,1) PRIMARY KEY,
+                file_name NVARCHAR(255) NOT NULL,
+                file_extension NVARCHAR(10) NOT NULL,
+                mime_type NVARCHAR(100) NOT NULL,
+                file_size_bytes BIGINT NOT NULL,
+                file_data VARBINARY(MAX) NOT NULL,
+                uploaded_at DATETIME DEFAULT GETDATE()
+            );
+        `);
+
+        // Create Admin user if it doesn't exist
+        let adminCheck = await pool.request()
+            .input("adminUser", sql.NVarChar, "Admin")
+            .query("SELECT * FROM users WHERE username = @adminUser");
+
+        if (adminCheck.recordset.length === 0) {
+            await pool.request()
+                .input("user", sql.NVarChar, "Admin")
+                .input("pass", sql.NVarChar, "Admin@123")
+                .query("INSERT INTO users (username, password) VALUES (@user, @pass)");
+            console.log("Default Admin user created.");
+        }
+
+    } catch (err) {
+        console.error("SQL Server Initialization Error:", err);
+    }
 }
+initDatabase();
 
 // ---------------- MIDDLEWARE ----------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Static folder
 app.use(express.static(path.join(ROOT, "public")));
 
 // Default page
@@ -31,245 +88,173 @@ app.get("/", (req, res) => {
     res.sendFile(path.join(ROOT, "public", "login.html"));
 });
 
-
-// ---------------- MULTER STORAGE ----------------
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir);
-    },
-
-    filename: (req, file, cb) => {
-        cb(null, file.originalname);
-    }
-});
-
+// ---------------- MULTER STORAGE (Memory Only) ----------------
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// ---------------- DATABASE ----------------
-const dbPath = path.join(ROOT, "users.db");
-
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error("Database error:", err);
-    } else {
-        console.log("SQLite connected");
-    }
-});
-
-db.serialize(() => {
-
-    db.run(`
-        CREATE TABLE IF NOT EXISTS users(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            password TEXT
-        )
-    `);
-
-    db.get("SELECT * FROM users WHERE username='Admin'", (err, row) => {
-
-        if (!row) {
-            db.run(
-                "INSERT INTO users(username,password) VALUES(?,?)",
-                ["Admin", "Admin@123"]
-            );
-        }
-    });
-
-});
-
-
 // ---------------- LOGIN ----------------
-app.post("/login", (req, res) => {
-
+app.post("/login", async (req, res) => {
     const { username, password } = req.body;
 
-    db.get(
-        "SELECT * FROM users WHERE username=? AND password=?",
-        [username, password],
-        (err, row) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request()
+            .input("user", sql.NVarChar, username)
+            .input("pass", sql.NVarChar, password)
+            .query("SELECT * FROM users WHERE username = @user AND password = @pass");
 
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ success: false });
-            }
-
-            if (row) {
-                res.json({ success: true });
-            } else {
-                res.json({ success: false });
-            }
+        if (result.recordset.length > 0) {
+            res.json({ success: true });
+        } else {
+            res.json({ success: false });
         }
-    );
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false });
+    }
 });
-
 
 // ---------------- LOGOUT ----------------
 app.get("/logout", (req, res) => {
     res.json({ success: true });
 });
 
+// ---------------- LIST FILES (From DB) ----------------
+app.get("/files", async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request().query(`
+            SELECT id, file_name AS name, file_size_bytes AS size, uploaded_at AS date, file_extension AS type 
+            FROM user_files
+        `);
 
-// ---------------- LIST FILES ----------------
-app.get("/files", (req, res) => {
-
-    let folderPath = req.query.folder || uploadDir;
-    folderPath = path.resolve(folderPath);
-
-    if (!fs.existsSync(folderPath)) {
-        return res.json([]);
-    }
-
-    fs.readdir(folderPath, (err, files) => {
-
-        if (err) {
-            console.error(err);
-            return res.json([]);
-        }
-
-        function formatFileSize(bytes) {
-
-    if (bytes < 1024) {
-        return bytes + " Bytes";
-    }
-
-    if (bytes < 1024 * 1024) {
-        return (bytes / 1024).toFixed(2) + " KB";
-    }
-
-    if (bytes < 1024 * 1024 * 1024) {
-        return (bytes / (1024 * 1024)).toFixed(2) + " MB";
-    }
-
-    if (bytes < 1024 * 1024 * 1024 * 1024) {
-        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
-    }
-
-    return (bytes / (1024 * 1024 * 1024 * 1024)).toFixed(2) + " TB";
-}
-
-const fileData = files.map(file => {
-
-    const fullPath = path.join(folderPath, file);
-    const stats = fs.statSync(fullPath);
-
-    return {
-    name: file,
-    size: formatFileSize(stats.size),
-    date: new Date(stats.mtime).toLocaleDateString(),
-    type: stats.isDirectory() ? "Folder" : "File"
-};
-
-});
+        const fileData = result.recordset.map(file => ({
+            name: file.name,
+            size: file.size, 
+            date: new Date(file.date).toLocaleDateString(),
+            type: file.type
+        }));
 
         res.json(fileData);
-    });
-
+    } catch (err) {
+        console.error("Fetch Files Error:", err);
+        res.json([]);
+    }
 });
 
-
-// ---------------- UPLOAD ----------------
-app.post("/upload", upload.array("files"), (req, res) => {
-
+// ---------------- UPLOAD (Save directly into SQL Server) ----------------
+app.post("/upload", upload.array("files"), async (req, res) => {
     if (!req.files || req.files.length === 0) {
         return res.status(400).json({ message: "No files uploaded" });
     }
 
-    res.json({ message: "File uploaded successfully" });
+    try {
+        let pool = await sql.connect(dbConfig);
 
-});
+        for (const file of req.files) {
+            const ext = path.extname(file.originalname).substring(1);
 
+            await pool.request()
+                .input("file_name", sql.NVarChar(255), file.originalname)
+                .input("file_extension", sql.NVarChar(10), ext)
+                .input("mime_type", sql.NVarChar(100), file.mimetype)
+                .input("file_size_bytes", sql.BigInt, file.size)
+                .input("file_data", sql.VarBinary(sql.MAX), file.buffer)
+                .query(`
+                    INSERT INTO user_files (file_name, file_extension, mime_type, file_size_bytes, file_data)
+                    VALUES (@file_name, @file_extension, @mime_type, @file_size_bytes, @file_data)
+                `);
+        }
 
-// ---------------- DOWNLOAD SINGLE ----------------
-app.get("/download/:filename", (req, res) => {
-
-    let folderPath = req.query.folder || uploadDir;
-    folderPath = path.resolve(folderPath);
-
-    const filePath = path.join(folderPath, path.basename(req.params.filename));
-
-    if (!fs.existsSync(filePath)) {
-        return res.status(404).send("File not found");
+        res.json({ message: "File uploaded successfully to Database" });
+    } catch (err) {
+        console.error("Upload Route Error:", err);
+        res.status(500).json({ message: "Database storage upload failed" });
     }
-
-    res.download(filePath);
-
 });
 
+// ---------------- DOWNLOAD SINGLE (From DB) ----------------
+app.get("/download/:filename", async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request()
+            .input("filename", sql.NVarChar(255), req.params.filename)
+            .query("SELECT mime_type, file_data FROM user_files WHERE file_name = @filename");
 
-// ---------------- DOWNLOAD MULTIPLE ----------------
-app.post("/download", (req, res) => {
+        if (result.recordset.length === 0) {
+            return res.status(404).send("File not found in database");
+        }
 
+        const file = result.recordset[0];
+        res.setHeader("Content-Type", file.mime_type);
+        res.setHeader("Content-Disposition", `attachment; filename="${req.params.filename}"`);
+        res.send(file.file_data);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Download processing error");
+    }
+});
+
+// ---------------- DOWNLOAD MULTIPLE (From DB Binary) ----------------
+app.post("/download", async (req, res) => {
     const files = req.body.files;
-    let folderPath = req.body.folder || uploadDir;
-
-    folderPath = path.resolve(folderPath);
 
     if (!files || files.length === 0) {
         return res.status(400).send("No files selected");
     }
 
-    const archive = archiver("zip", { zlib: { level: 9 } });
+    try {
+        let pool = await sql.connect(dbConfig);
+        const archive = archiver("zip", { zlib: { level: 9 } });
 
-    res.attachment("files.zip");
-    archive.pipe(res);
+        res.attachment("files.zip");
+        archive.pipe(res);
 
-    archive.on("error", err => {
-        console.error(err);
-        res.status(500).send("Zip creation failed");
-    });
-
-    files.forEach(file => {
-
-        const filePath = path.join(folderPath, path.basename(file));
-
-        if (fs.existsSync(filePath)) {
-            archive.file(filePath, { name: file });
-        }
-
-    });
-
-    archive.finalize();
-
-});
-
-
-// ---------------- DELETE FILE ----------------
-app.delete("/delete/:filename", (req, res) => {
-
-    let folderPath = req.query.folder || uploadDir;
-    folderPath = path.resolve(folderPath);
-
-    const filePath = path.join(folderPath, path.basename(req.params.filename));
-
-    if (!fs.existsSync(filePath)) {
-        return res.status(404).json({
-            success: false,
-            message: "File not found"
-        });
-    }
-
-    fs.unlink(filePath, (err) => {
-
-        if (err) {
+        archive.on("error", err => {
             console.error(err);
-            return res.status(500).json({ success: false });
-        }
-
-        res.json({
-            success: true,
-            message: "File deleted successfully"
+            res.status(500).send("Zip creation failed");
         });
 
-    });
+        for (const filename of files) {
+            let result = await pool.request()
+                .input("filename", sql.NVarChar(255), filename)
+                .query("SELECT file_data FROM user_files WHERE file_name = @filename");
 
+            if (result.recordset.length > 0) {
+                const binaryBuffer = result.recordset[0].file_data;
+                archive.append(binaryBuffer, { name: filename });
+            }
+        }
+
+        archive.finalize();
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Bulk bundle download error");
+    }
 });
 
+// ---------------- DELETE FILE (From DB) ----------------
+app.delete("/delete/:filename", async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request()
+            .input("filename", sql.NVarChar(255), req.params.filename)
+            .query("DELETE FROM user_files WHERE file_name = @filename");
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ success: false, message: "File not found" });
+        }
+
+        res.json({ success: true, message: "File records purged successfully" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: "Internal server error during deletion" });
+    }
+});
 
 // ---------------- START SERVER ----------------
 app.listen(PORT, () => {
-
     console.log("Server running on port " + PORT);
     console.log("Login page: http://localhost:" + PORT);
-
 });
